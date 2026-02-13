@@ -12,9 +12,34 @@ use Laravel\Ai\Responses\StreamedAgentResponse;
 
 class HelpdeskController extends Controller
 {
-    public function index(): \Inertia\Response
+    public function index(): \Illuminate\Http\JsonResponse
     {
-        return Inertia::render('Helpdesk/Index');
+        $userId = Auth::id();
+
+        $threads = HelpdeskThread::query()
+            ->where('user_id', $userId)
+            ->whereNotNull('conversation_id')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $threadsWithPreview = $threads->map(function (HelpdeskThread $thread) {
+            $firstMessage = DB::table('agent_conversation_messages')
+                ->where('conversation_id', $thread->conversation_id)
+                ->where('role', 'user')
+                ->orderBy('created_at')
+                ->value('content');
+
+            return [
+                'id' => $thread->id,
+                'agent_key' => $thread->agent_key,
+                'updated_at' => $thread->updated_at,
+                'preview' => $firstMessage ? mb_substr($firstMessage, 0, 80) : '',
+            ];
+        });
+
+        return response()->json([
+            'threads' => $threadsWithPreview,
+        ]);
     }
 
     public function storeThread(Request $request): \Illuminate\Http\JsonResponse
