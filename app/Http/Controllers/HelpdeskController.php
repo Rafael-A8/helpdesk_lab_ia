@@ -89,18 +89,20 @@ class HelpdeskController extends Controller
         ]);
 
         $user = Auth::user();
+        // TODO ALVARINO ANOTACOES: Resolve the agent class based on the thread's agent_key and initialize it
         $agentClass = AgentResolver::resolve($thread->agent_key);
         $agent = new $agentClass;
 
         if ($thread->conversation_id) {
             return $agent
-                ->continue($thread->conversation_id, as: $user)
+                ->continue($thread->conversation_id, as: $user) // TODO ALVARINO ANOTACOES: Continue the existing conversation
                 ->stream($request->message);
         }
 
         return $agent
-            ->forUser($user)
-            ->stream($request->message)
+            ->forUser($user) //TODO ALVARINO ANOTACOES: Initialize a new conversation for the user
+            ->stream($request->message) //TODO ALVARINO ANOTACOES Start streaming the response
+            //TODO ALVARINO ANOTACOES: Once the first chunk of the response is received, update the thread with the conversation ID
             ->then(function (StreamedAgentResponse $response) use ($thread) {
                 $thread->update(['conversation_id' => $response->conversationId]);
             });
